@@ -13,3 +13,6 @@
 [submodule "mesh-router-template-root"]
 	path = mesh-router-template-root
 	url = https://github.com/Yundera/mesh-router-template-root.git
+[submodule "mesh-dashboard"]
+	path = mesh-dashboard
+	url = https://github.com/Yundera/mesh-dashboard.git
