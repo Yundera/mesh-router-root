@@ -1,0 +1,18 @@
+{
+    auto_https off
+    log {
+        output stdout
+        format console
+    }
+}
+
+# Internal traffic from mesh-router tunnel
+:80 {
+    reverse_proxy casaos:8080
+}
+
+# Direct access port (for mesh-router-agent direct IP routing)
+:10443 {
+    log
+    reverse_proxy casaos:8080
+}

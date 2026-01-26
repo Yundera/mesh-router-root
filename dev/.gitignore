@@ -1,0 +1,8 @@
+# Environment files (contain secrets)
+.env
+.env.local
+.env.*.local
+
+# Caddy data
+caddy_data/
+caddy_config/
