@@ -1,0 +1,15 @@
+[submodule "mesh-router-tunnel"]
+	path = mesh-router-tunnel
+	url = https://github.com/Yundera/mesh-router-tunnel.git
+[submodule "mesh-router-backend"]
+	path = mesh-router-backend
+	url = https://github.com/Yundera/mesh-router-backend.git
+[submodule "mesh-router-agent"]
+	path = mesh-router-agent
+	url = https://github.com/Yundera/mesh-router-agent.git
+[submodule "mesh-router-gateway"]
+	path = mesh-router-gateway
+	url = https://github.com/Yundera/mesh-router-gateway.git
+[submodule "mesh-router-template-root"]
+	path = mesh-router-template-root
+	url = https://github.com/Yundera/mesh-router-template-root.git
