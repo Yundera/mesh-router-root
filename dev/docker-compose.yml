@@ -4,7 +4,7 @@ services:
   # Establishes WireGuard VPN tunnel to the provider for NAT traversal
   # =============================================================================
   mesh-router:
-    image: ghcr.io/yundera/mesh-router-tunnel:latest
+    image: mesh-router-tunnel:local
     container_name: mesh-router
     hostname: mesh-router
     restart: unless-stopped
@@ -16,7 +16,6 @@ services:
       - net.ipv4.conf.all.src_valid_mark=1
     environment:
       - PROVIDER=${PROVIDER}
-      - BACKEND_URL=${BACKEND_URL}
       - ROUTING_TARGET_HOST=caddy
       - ROUTING_TARGET_PORT=80
     networks:
@@ -29,7 +28,7 @@ services:
   # Registers public IP with backend for direct routing (bypasses VPN)
   # =============================================================================
   mesh-router-agent:
-    image: ghcr.io/yundera/mesh-router-agent:latest
+    image: mesh-router-agent:local
     container_name: mesh-router-agent
     hostname: mesh-router-agent
     restart: unless-stopped

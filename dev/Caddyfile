@@ -6,12 +6,14 @@
     }
 }
 
-# Internal traffic from mesh-router tunnel
+# Internal traffic from mesh-router tunnel (HTTP)
 :80 {
     reverse_proxy casaos:8080
 }
 
 # Direct access port (for mesh-router-agent direct IP routing)
+# Note: Gateway assumes HTTP for non-443 ports. TLS would require adding
+# scheme field to routes API or changing gateway logic.
 :10443 {
     log
     reverse_proxy casaos:8080
