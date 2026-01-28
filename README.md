@@ -62,7 +62,8 @@ Mesh Router enables secure, distributed routing of traffic between public server
 
 Architecture diagrams and design documents are available in the [doc/architecture](./doc/architecture) folder:
 
-- [Mesh Router Architecture (Excalidraw)](./doc/architecture/mesh-router/)
+- [Architecture Overview](./doc/architecture/README.md)
+- [Excalidraw Diagrams](./doc/architecture/mesh-router/)
 
 ---
 

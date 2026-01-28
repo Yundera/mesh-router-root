@@ -11,10 +11,10 @@
     reverse_proxy casaos:8080
 }
 
-# Direct access port (for mesh-router-agent direct IP routing)
-# Note: Gateway assumes HTTP for non-443 ports. TLS would require adding
-# scheme field to routes API or changing gateway logic.
+# Direct access port with TLS (for mesh-router-agent direct IP routing)
+# Uses certificate obtained from mesh-router-backend CA
 :10443 {
     log
+    tls /certs/cert.pem /certs/key.pem
     reverse_proxy casaos:8080
 }

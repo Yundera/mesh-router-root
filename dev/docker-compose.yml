@@ -3,10 +3,10 @@ services:
   # MESH ROUTER TUNNEL
   # Establishes WireGuard VPN tunnel to the provider for NAT traversal
   # =============================================================================
-  mesh-router:
+  mesh-router-tunnel:
     image: mesh-router-tunnel:local
-    container_name: mesh-router
-    hostname: mesh-router
+    container_name: mesh-router-tunnel
+    hostname: mesh-router-tunnel
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
@@ -36,6 +36,8 @@ services:
       - PROVIDER=${PROVIDER}
       - PUBLIC_IP=${PUBLIC_IP}
       - TARGET_PORT=10443
+    volumes:
+      - agent-data:/app/data
     networks:
       - pcs
 
@@ -54,8 +56,11 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+      - agent-data:/certs:ro
     networks:
       - pcs
+    depends_on:
+      - mesh-router-agent
 
   # =============================================================================
   # CASAOS (Optional)
@@ -106,3 +111,4 @@ networks:
 volumes:
   caddy_data:
   caddy_config:
+  agent-data:
