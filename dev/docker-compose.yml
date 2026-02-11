@@ -19,7 +19,7 @@ services:
       - ROUTING_TARGET_HOST=caddy
       - ROUTING_TARGET_PORT=80
     networks:
-      - pcs
+      - mesh
     depends_on:
       - caddy
 
@@ -39,26 +39,32 @@ services:
     volumes:
       - agent-data:/app/data
     networks:
-      - pcs
+      - mesh
 
   # =============================================================================
   # CADDY
-  # Reverse proxy for local traffic routing
+  # Reverse proxy with Docker container discovery via labels
   # =============================================================================
   caddy:
-    image: caddy:2-alpine
+    image: lucaslorentz/caddy-docker-proxy:ci-alpine
     container_name: caddy
     hostname: caddy
     restart: unless-stopped
     ports:
-      - "10443:10443"
+      - "80:80"      # ACME HTTP-01 challenges for Let's Encrypt
+      - "10443:443"
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - agent-data:/certs:ro
       - caddy_data:/data
       - caddy_config:/config
-      - agent-data:/certs:ro
+    environment:
+      - CADDY_DOCKER_CADDYFILE_PATH=/etc/caddy/Caddyfile
+      - CADDY_INGRESS_NETWORKS=mesh
+      - PCS_EMAIL=${PCS_EMAIL}  # For ACME/Let's Encrypt registration
     networks:
-      - pcs
+      - mesh
     depends_on:
       - mesh-router-agent
 
@@ -71,15 +77,20 @@ services:
     container_name: casaos
     hostname: casaos
     restart: unless-stopped
+    labels:
+      # Caddy routing labels (Compass-compatible)
+      # TLS uses on-demand Let's Encrypt from global Caddyfile config
+      - "caddy=${PCS_DOMAIN}"
+      - "caddy.reverse_proxy={{upstreams 8080}}"
     environment:
       DOCKER_API_VERSION: "1.44"
       PUID: "1000"
       PGID: "1000"
       DATA_ROOT: "${PCS_DATA_ROOT:-/DATA}"
       REF_DOMAIN: "${PCS_DOMAIN}"
-      REF_NET: "pcs"
-      REF_PORT: "443"
-      REF_SCHEME: "https"
+      REF_NET: "mesh"
+      REF_PORT: "80"
+      REF_SCHEME: "http"
       default_pwd: "${PCS_DEFAULT_PASSWORD}"
       public_ip: "${PUBLIC_IP}"
       domain: "${PCS_DOMAIN}"
@@ -89,7 +100,7 @@ services:
       PCS_PUBLIC_IP: "${PUBLIC_IP}"
       PCS_EMAIL: "${PCS_EMAIL}"
     networks:
-      - pcs
+      - mesh
     volumes:
       - type: bind
         source: ${DATA_HOST_PATH:-/DATA}
@@ -104,11 +115,11 @@ services:
         target: /dev
 
 networks:
-  pcs:
+  mesh:
     driver: bridge
-    name: pcs
+    name: mesh
 
 volumes:
+  agent-data:
   caddy_data:
   caddy_config:
-  agent-data:

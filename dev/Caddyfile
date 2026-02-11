@@ -1,20 +1,91 @@
+# =============================================================================
+# CADDY CONFIGURATION - Compass-Compatible Certificate Strategy
+# =============================================================================
+# Certificate strategy (mirrors mesh-router-compass):
+#   - Uses shared certificate from mesh-router-agent (/certs/)
+#   - Per-domain Let's Encrypt available via container labels
+#
+# Requirements:
+#   - agent-data volume mounted at /certs (provides TLS cert)
+#   - Port 80 accessible for ACME challenges (if using LE via labels)
+# =============================================================================
+
 {
-    auto_https off
     log {
         output stdout
         format console
     }
+
+    # ACME configuration for Let's Encrypt (used when domains specify it via labels)
+    acme_ca https://acme-v02.api.letsencrypt.org/directory
+    email {$PCS_EMAIL:admin@example.com}
+
+    # Uncomment for testing (avoids rate limits):
+    # acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
 }
 
-# Internal traffic from mesh-router tunnel (HTTP)
+# =============================================================================
+# Port 80 - HTTP (Tunnel traffic + ACME challenges)
+# =============================================================================
+# Handles:
+#   - ACME HTTP-01 challenges for Let's Encrypt (automatic)
+#   - Internal tunnel traffic from mesh-router-tunnel
+# =============================================================================
 :80 {
-    reverse_proxy casaos:8080
+    reverse_proxy casaos:8080 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+
+        # WebSocket support
+        header_up Connection {header.Connection}
+        header_up Upgrade {header.Upgrade}
+
+        # Timeouts (match Compass: 300s)
+        transport http {
+            dial_timeout 60s
+            response_header_timeout 300s
+        }
+    }
+
+    # Large file upload support (20GB like Compass)
+    request_body {
+        max_size 20GB
+    }
 }
 
-# Direct access port with TLS (for mesh-router-agent direct IP routing)
-# Uses certificate obtained from mesh-router-backend CA
-:10443 {
-    log
+# =============================================================================
+# Port 443 - HTTPS with Agent Certificate
+# =============================================================================
+# Uses shared certificate from mesh-router-agent
+# Browser will show warning (CN mismatch) but connection is encrypted
+# Same behavior as Compass fallback mode
+# =============================================================================
+:443 {
+    # Use agent's shared certificate
     tls /certs/cert.pem /certs/key.pem
-    reverse_proxy casaos:8080
+
+    log {
+        output stdout
+        format console
+    }
+
+    reverse_proxy casaos:8080 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+
+        # WebSocket support
+        header_up Connection {header.Connection}
+        header_up Upgrade {header.Upgrade}
+
+        # Timeouts (match Compass: 300s)
+        transport http {
+            dial_timeout 60s
+            response_header_timeout 300s
+        }
+    }
+
+    # Large file upload support (20GB like Compass)
+    request_body {
+        max_size 20GB
+    }
 }

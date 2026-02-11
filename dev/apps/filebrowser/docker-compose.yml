@@ -1,0 +1,19 @@
+services:
+  filebrowser:
+    image: filebrowser/filebrowser:v2.32.0
+    container_name: filebrowser
+    hostname: filebrowser
+    restart: unless-stopped
+    expose:
+      - "80"
+    labels:
+      # Compass routing labels
+      # Pattern: <app>-<username>.inojob.com - gateway extracts username after last dash
+      - "compass=filebrowser-${PCS_SUBDOMAIN}.inojob.com"
+      - "compass.reverse_proxy={{upstreams 80}}"
+    networks:
+      - mesh
+
+networks:
+  mesh:
+    external: true
