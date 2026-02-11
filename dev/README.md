@@ -12,8 +12,8 @@ This folder contains everything needed to run the complete Mesh Router stack loc
               ▼                           ▼
     ┌──────────────────┐       ┌──────────────────┐
     │  VPN Tunnel      │       │  Direct IP       │
-    │  (mesh-router)   │       │  (mesh-router-   │
-    │                  │       │   agent)         │
+    │  (mesh-router-   │       │  (mesh-router-   │
+    │   tunnel)        │       │   agent)         │
     └────────┬─────────┘       └────────┬─────────┘
              │                          │
              └──────────┬───────────────┘
@@ -72,7 +72,7 @@ docker compose up -d
 docker compose logs -f
 
 # Specific service
-docker compose logs -f mesh-router
+docker compose logs -f mesh-router-tunnel
 ```
 
 ### 4. Access Your Services
@@ -85,7 +85,7 @@ Once running, your services will be accessible at:
 
 | Service | Description | Port |
 |---------|-------------|------|
-| `mesh-router` | WireGuard VPN tunnel to provider | - |
+| `mesh-router-tunnel` | WireGuard VPN tunnel to provider | - |
 | `mesh-router-agent` | Direct IP registration agent | - |
 | `caddy` | Reverse proxy | 10443 (external) |
 | `casaos` | Container management UI | 8080 (internal) |
@@ -127,18 +127,18 @@ If you don't need direct IP routing, remove the `mesh-router-agent` service from
 
 ### Direct IP Only Mode
 
-If your server has a public IP and doesn't need VPN tunneling, remove the `mesh-router` service and keep only `mesh-router-agent`.
+If your server has a public IP and doesn't need VPN tunneling, remove the `mesh-router-tunnel` service and keep only `mesh-router-agent`.
 
 ## Troubleshooting
 
 ### VPN Connection Issues
 
 ```bash
-# Check mesh-router logs
-docker compose logs mesh-router
+# Check mesh-router-tunnel logs
+docker compose logs mesh-router-tunnel
 
 # Verify WireGuard interface
-docker compose exec mesh-router wg show
+docker compose exec mesh-router-tunnel wg show
 ```
 
 ### Caddy Not Routing

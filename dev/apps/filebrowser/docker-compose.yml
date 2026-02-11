@@ -7,10 +7,12 @@ services:
     expose:
       - "80"
     labels:
-      # Compass routing labels
-      # Pattern: <app>-<username>.inojob.com - gateway extracts username after last dash
-      - "compass=filebrowser-${PCS_SUBDOMAIN}.inojob.com"
-      - "compass.reverse_proxy={{upstreams 80}}"
+      # Caddy routing labels
+      # Pattern: files-<subdomain>.<server_domain> (e.g., files-painfulurial.inojob.com)
+      - "caddy=files-${PCS_DOMAIN}"
+      - "caddy.reverse_proxy={{upstreams 80}}"
+    env_file:
+      - .env
     networks:
       - mesh
 
