@@ -16,6 +16,3 @@
 [submodule "mesh-dashboard"]
 	path = mesh-dashboard
 	url = https://github.com/Yundera/mesh-dashboard.git
-[submodule "mesh-router-compass"]
-	path = mesh-router-compass
-	url = https://github.com/Yundera/mesh-router-compass.git
