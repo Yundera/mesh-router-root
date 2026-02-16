@@ -117,6 +117,12 @@ mesh-router-gateway ─── GET /resolve/v2/:domain ───► mesh-router-b
 - **DDoS Protection**: Cloudflare in front of public endpoints
 - **VPN**: WireGuard for encrypted tunnel traffic
 
+## Deployment
+
+For server-side deployment instructions including network configuration:
+
+- [Server Deployment Guide](./SERVER_DEPLOYMENT.md) - Backend, gateway, tunnel, and dashboard deployment with mesh-internal network setup
+
 ## Diagram Files
 
 Architecture diagrams are available as Excalidraw files:
