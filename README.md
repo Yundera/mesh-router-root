@@ -50,11 +50,30 @@ Mesh Router enables secure, distributed routing of traffic between public server
 | Component | Description | Documentation |
 |-----------|-------------|---------------|
 | [**mesh-router-backend**](./mesh-router-backend) | Express.js API for domain management and IP resolution | [README](./mesh-router-backend/README.md) |
-| [**mesh-router-gateway**](./mesh-router-gateway) | HTTP reverse proxy gateway for wildcard domain routing | [README](./mesh-router-gateway/README.md) |
+| [**mesh-router-gateway**](./mesh-router-gateway) | OpenResty reverse proxy gateway for wildcard domain routing | [README](./mesh-router-gateway/README.md) |
+| [**mesh-router-gateway-cf**](./mesh-router-gateway-cf) | Cloudflare Worker gateway for edge-based routing | [README](./mesh-router-gateway-cf/README.md) |
 | [**mesh-router-tunnel**](./mesh-router-tunnel) | WireGuard-based VPN tunneling for NAT traversal | [README](./mesh-router-tunnel/README.md) |
 | [**mesh-router-agent**](./mesh-router-agent) | Lightweight agent for direct IP registration | [README](./mesh-router-agent/README.md) |
 | [**mesh-dashboard**](./mesh-dashboard) | Web dashboard for mesh network management | [README](./mesh-dashboard/README.md) |
 | [**mesh-router-template-root**](./mesh-router-template-root) | Template for PCS instance configuration | - |
+
+---
+
+## Gateway Modes
+
+Mesh Router supports three gateway configurations:
+
+| Mode | Description | Performance |
+|------|-------------|-------------|
+| **CF Worker Only** | Edge-based routing via Cloudflare Workers | Best (~249 req/s, 169ms p50) |
+| **OpenResty Only** | Self-hosted reverse proxy | Simpler setup (~159 req/s, 283ms p50) |
+| **CF + Fallback** | CF Worker with OpenResty fallback | Maximum reliability |
+
+For detailed guidance on choosing and configuring gateway modes:
+
+- [Gateway Modes Guide](./doc/GATEWAY_MODES.md) - Decision tree and comparison
+- [Data Flow](./doc/DATA_FLOW.md) - How traffic flows through each mode
+- [Security in Transit](./doc/SECURITY_IN_TRANSIT.md) - Certificates and encryption
 
 ---
 
