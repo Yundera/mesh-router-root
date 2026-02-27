@@ -19,3 +19,6 @@
 [submodule "mesh-router-gateway-cf"]
 	path = mesh-router-gateway-cf
 	url = https://github.com/Yundera/mesh-router-gateway-cf.git
+[submodule "mesh-router-perf"]
+	path = mesh-router-perf
+	url = https://github.com/Yundera/mesh-router-perf.git
