@@ -81,6 +81,7 @@ services:
       # TLS uses on-demand Let's Encrypt from global Caddyfile config
       - "caddy=${PCS_DOMAIN}"
       - "caddy.reverse_proxy={{upstreams 8080}}"
+      - "caddy.reverse_proxy.import=proxy_headers"
     environment:
       DOCKER_API_VERSION: "1.44"
       PUID: "1000"
@@ -112,6 +113,27 @@ services:
       - type: bind
         source: /dev
         target: /dev
+
+  # =============================================================================
+  # MESH ROUTER PERF
+  # Performance testing service with HTTP, HTTPS, and WebSocket endpoints
+  # =============================================================================
+  perf:
+    image: mesh-router-perf:local
+    container_name: perf
+    hostname: perf
+    restart: unless-stopped
+    labels:
+      # Caddy routing for perf-{domain} subdomain with WebSocket support
+      - "caddy=perf-${PCS_DOMAIN}"
+      - "caddy.reverse_proxy={{upstreams 3000}}"
+      - "caddy.reverse_proxy.import=proxy_headers"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - LOG_LEVEL=info
+    networks:
+      - mesh
 
 networks:
   mesh:

@@ -167,24 +167,32 @@ Total latency: ~283ms (p50)
     │                          │                          │                                  │                      │
     │                          │                          │  3. Extract subdomain            │                      │
     │                          │                          │     "alice" from Host header     │                      │
+    │                          │                          │     appPrefix = "app"            │                      │
     │                          │                          │                                  │                      │
     │                          │                          │  4. Query resolve API            │                      │
     │                          │                          │─────────────────────────────────▶│                      │
     │                          │                          │  GET /resolve/v2/alice           │                      │
     │                          │                          │  (cached 60s at CF edge)         │                      │
     │                          │                          │                                  │                      │
-    │                          │                          │  5. Return routes                │                      │
+    │                          │                          │  5. Return routes (pre-validated)│                      │
     │                          │                          │◀─────────────────────────────────│                      │
-    │                          │                          │  {routes: [{ip, port}]}          │                      │
+    │                          │                          │  {routes: [                      │                      │
+    │                          │                          │    {type:"domain",               │                      │
+    │                          │                          │     domain:"88-x.sslip.io",      │                      │
+    │                          │                          │     priority:2},                 │                      │
+    │                          │                          │    {type:"domain",               │                      │
+    │                          │                          │     domain:"88-x.nip.io",        │                      │
+    │                          │                          │     priority:3}                  │                      │
+    │                          │                          │  ]}                              │                      │
     │                          │                          │                                  │                      │
-    │                          │                          │  6. Convert IP to nip.io         │                      │
-    │                          │                          │     203.0.113.5 →                │                      │
-    │                          │                          │     203.0.113.5.nip.io           │                      │
+    │                          │                          │  6. Filter type=domain           │                      │
+    │                          │                          │     Select lowest priority       │                      │
+    │                          │                          │     Prepend appPrefix            │                      │
     │                          │                          │                                  │                      │
     │                          │                          │  7. fetch() with CF pooling      │                      │
     │                          │                          │─────────────────────────────────────────────────────────▶│
-    │                          │                          │  https://203.0.113.5.nip.io:10443│                      │
-    │                          │                          │  (TLS session reuse automatic)   │                      │
+    │                          │                          │  https://app-88-x.sslip.io:443   │                      │
+    │                          │                          │  (domain from route, no IP→DNS)  │                      │
     │                          │                          │                                  │                      │
     │                          │                          │  8. Response from app            │                      │
     │                          │                          │◀─────────────────────────────────────────────────────────│
@@ -205,35 +213,72 @@ Total latency: ~169ms (p50)
 └── Return path: minimal (same connection)
 ```
 
-### nip.io DNS Resolution
+### Domain Route Selection
 
 ```
-CF Workers cannot fetch() to raw IP addresses.
-Solution: Use nip.io to convert IPs to hostnames.
+Routes are pre-registered and pre-validated by the agent.
+CF Worker filters and uses domain routes directly.
 
 ┌─────────────────────────────────────────────────────────────┐
-│                    nip.io Conversion                        │
+│                  DOMAIN ROUTE SELECTION                     │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  IPv4:                                                      │
-│    192.168.1.1          → 192.168.1.1.nip.io               │
-│    203.0.113.5:10443    → 203.0.113.5.nip.io:10443         │
+│  Routes from API (already validated at registration):       │
+│  [                                                          │
+│    {type:"ip", ip:"88.187.147.189", priority:1},  ◀─ Skip  │
+│    {type:"domain", domain:"88-187-147-189.sslip.io", p:2}, │
+│    {type:"domain", domain:"88-187-147-189.nip.io", p:3}    │
+│  ]                                                          │
 │                                                             │
-│  IPv6:                                                      │
-│    2001:bc8:3021::1     → 2001-bc8-3021--1.nip.io          │
-│    (colons replaced with hyphens)                           │
+│  Worker processing:                                         │
+│  1. Filter: type="domain" only                              │
+│     → ["88-187-147-189.sslip.io", "88-187-147-189.nip.io"]  │
 │                                                             │
-│  DNS Resolution:                                            │
-│    nip.io returns the embedded IP address                   │
-│    203.0.113.5.nip.io → A record: 203.0.113.5              │
+│  2. Sort by priority (lowest first)                         │
+│     → sslip.io (priority 2) selected                        │
+│                                                             │
+│  3. Skip if marked unhealthy (from previous failures)       │
+│                                                             │
+│  4. Prepend app prefix from request                         │
+│     Request: app.alice.nsl.sh                               │
+│     → appPrefix = "app"                                     │
+│     → "app-88-187-147-189.sslip.io"                         │
+│                                                             │
+│  5. Build URL and fetch                                     │
+│     → https://app-88-187-147-189.sslip.io:443/path          │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 
-IMPORTANT: PCS certificates must include nip.io SANs for this to work.
-Example SANs:
-  - *.alice.nsl.sh
-  - alice.nsl.sh
-  - 203.0.113.5.nip.io  ◀── Required for CF Worker
+Key change: Domain is pre-registered, not constructed from IP.
+If sslip.io was unreachable at registration, it won't be in the list.
+```
+
+### DNS Services for Domain Routes
+
+```
+CF Workers cannot fetch() to raw IP addresses.
+Solution: Use wildcard DNS services that embed the IP in the hostname.
+
+┌─────────────────────────────────────────────────────────────┐
+│                    DNS SERVICE OPTIONS                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  sslip.io (preferred, priority 2):                          │
+│    88.187.147.189     → 88-187-147-189.sslip.io            │
+│    2001:bc8:3021::1   → 2001-bc8-3021--1.sslip.io          │
+│                                                             │
+│  nip.io (fallback, priority 3):                             │
+│    88.187.147.189     → 88-187-147-189.nip.io              │
+│    2001:bc8:3021::1   → 2001-bc8-3021--1.nip.io            │
+│                                                             │
+│  Why two services?                                          │
+│    • Redundancy: if one DNS service has issues, use other   │
+│    • Validated at registration: only working ones stored    │
+│    • sslip.io often faster/more reliable (hence priority 2) │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+
+PCS certificates must include SANs for these domains.
 ```
 
 ---
@@ -338,42 +383,95 @@ Why "gateway.entrypoint."?
 
 ---
 
-## Route Types: Direct vs Tunnel
+## Route Types
 
-Both gateway modes support two route types:
+Routes are categorized by `type` field and selected based on the routing component:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                       ROUTE TYPES                           │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  DIRECT ROUTE (via mesh-router-agent)                       │
+│  IP ROUTES (type: "ip")                                     │
 │  ─────────────────────────────────────                      │
-│  • PCS has public IP                                        │
-│  • Agent registers IP with backend                          │
-│  • Gateway proxies directly to PCS                          │
-│  • Priority: 1 (preferred)                                  │
-│  • Latency: Lower                                           │
+│  Used by: OpenResty Gateway (can connect to IPs directly)   │
 │                                                             │
-│     Gateway ──────────────────────────▶ PCS (public IP)     │
+│  ┌──────────┬──────────┬────────────────────────────────┐   │
+│  │ Priority │ Source   │ Example                        │   │
+│  ├──────────┼──────────┼────────────────────────────────┤   │
+│  │ 1        │ agent    │ 88.187.147.189:443 (public)    │   │
+│  │ 10       │ tunnel   │ 172.30.0.3:80 (WireGuard)      │   │
+│  └──────────┴──────────┴────────────────────────────────┘   │
 │                                                             │
 │  ─────────────────────────────────────────────────────────  │
 │                                                             │
-│  TUNNEL ROUTE (via mesh-router-tunnel)                      │
+│  DOMAIN ROUTES (type: "domain")                             │
 │  ─────────────────────────────────────                      │
-│  • PCS behind NAT/firewall                                  │
-│  • WireGuard tunnel to tunnel hub                           │
-│  • Gateway proxies to tunnel hub                            │
-│  • Priority: 2 (fallback)                                   │
-│  • Latency: Higher (extra hop)                              │
+│  Used by: CF Worker (cannot connect to IPs, uses DNS)       │
 │                                                             │
-│     Gateway ──▶ Tunnel Hub ══WireGuard══▶ PCS (private IP)  │
+│  ┌──────────┬──────────┬────────────────────────────────┐   │
+│  │ Priority │ Source   │ Example                        │   │
+│  ├──────────┼──────────┼────────────────────────────────┤   │
+│  │ 2        │ agent    │ 88-187-147-189.sslip.io:443    │   │
+│  │ 3        │ agent    │ 88-187-147-189.nip.io:443      │   │
+│  └──────────┴──────────┴────────────────────────────────┘   │
+│                                                             │
+│  Domain routes use wildcard DNS services (sslip.io, nip.io) │
+│  that resolve embedded IPs back to the actual IP address.   │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 
 Route selection: Lower priority number wins.
-If direct route is healthy, it's always used.
-Tunnel is fallback when direct fails.
+CF Worker uses domain routes, Gateway uses IP routes.
+If all domain routes fail, CF Worker falls back to Gateway.
+```
+
+## Route Registration & Validation
+
+Routes are validated at registration time before being stored:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  ROUTE VALIDATION FLOW                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Agent submits routes to backend:                           │
+│  POST /routes/:userid/:sig                                  │
+│  {                                                          │
+│    "routes": [                                              │
+│      {"type": "ip", "ip": "88.187.147.189", "port": 443},  │
+│      {"type": "domain", "domain": "88-187-147-189.sslip.io"}│
+│      {"type": "domain", "domain": "88-187-147-189.nip.io"} │
+│    ]                                                        │
+│  }                                                          │
+│                           │                                 │
+│                           ▼                                 │
+│  Backend validates each route:                              │
+│                                                             │
+│  For each route:                                            │
+│  ├─ Build test URL:                                         │
+│  │   IP route:     https://88.187.147.189:443/health        │
+│  │   Domain route: https://88-187-147-189.sslip.io/health   │
+│  │                                                          │
+│  ├─ Test connectivity (5 second timeout)                    │
+│  │   ├─ Connection refused? → Reject                        │
+│  │   ├─ Timeout? → Reject                                   │
+│  │   └─ Connected? → Continue                               │
+│  │                                                          │
+│  └─ Verify SSL (if HTTPS)                                   │
+│      ├─ Cert valid? → Accept                                │
+│      └─ Cert invalid? → Reject                              │
+│                           │                                 │
+│                           ▼                                 │
+│  Store only healthy routes in Redis                         │
+│  Return: { accepted: [...], rejected: [...] }               │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+
+Benefits:
+• Bad routes never reach Redis → No timeout delays
+• nip.io/sslip.io outages detected at registration
+• Agent knows which routes failed and why
 ```
 
 ---

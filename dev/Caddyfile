@@ -25,26 +25,44 @@
 }
 
 # =============================================================================
+# Reusable snippet for reverse proxy headers (WebSocket compatible)
+# Import in Docker labels with: caddy.reverse_proxy.import=proxy_headers
+# =============================================================================
+(proxy_headers) {
+    header_up Host {host}
+    header_up X-Real-IP {remote_host}
+    header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
+    header_up Connection {header.Connection}
+    header_up Upgrade {header.Upgrade}
+    transport http {
+        dial_timeout 60s
+        response_header_timeout 300s
+    }
+}
+
+# =============================================================================
 # Port 80 - HTTP (Tunnel traffic + ACME challenges)
 # =============================================================================
 # Handles:
 #   - ACME HTTP-01 challenges for Let's Encrypt (automatic)
 #   - Internal tunnel traffic from mesh-router-tunnel
+#   - Host-based routing to containers (CasaOS, apps)
 # =============================================================================
 :80 {
-    reverse_proxy casaos:8080 {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
+    # Route to CasaOS for the main PCS domain and its nip.io/sslip.io variants
+    # The wildcard matchers handle domain routes from CF Worker
+    @casaos {
+        host {$PCS_DOMAIN:painfulurial.inojob.com}
+        host *.nip.io
+        host *.sslip.io
+    }
+    reverse_proxy @casaos casaos:8080 {
+        import proxy_headers
+    }
 
-        # WebSocket support
-        header_up Connection {header.Connection}
-        header_up Upgrade {header.Upgrade}
-
-        # Timeouts (match Compass: 300s)
-        transport http {
-            dial_timeout 60s
-            response_header_timeout 300s
-        }
+    # Default: route to perf service
+    reverse_proxy perf:3000 {
+        import proxy_headers
     }
 
     # Large file upload support (20GB like Compass)
@@ -69,19 +87,19 @@
         format console
     }
 
-    reverse_proxy casaos:8080 {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
+    # Route to CasaOS for the main PCS domain and its nip.io/sslip.io variants
+    @casaos {
+        host {$PCS_DOMAIN:painfulurial.inojob.com}
+        host *.nip.io
+        host *.sslip.io
+    }
+    reverse_proxy @casaos casaos:8080 {
+        import proxy_headers
+    }
 
-        # WebSocket support
-        header_up Connection {header.Connection}
-        header_up Upgrade {header.Upgrade}
-
-        # Timeouts (match Compass: 300s)
-        transport http {
-            dial_timeout 60s
-            response_header_timeout 300s
-        }
+    # Default: route to perf service
+    reverse_proxy perf:3000 {
+        import proxy_headers
     }
 
     # Large file upload support (20GB like Compass)
