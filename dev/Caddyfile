@@ -11,6 +11,9 @@
 # =============================================================================
 
 {
+    # Admin API (used internally by cert watcher for reloads)
+    admin localhost:2019
+
     log {
         output stdout
         format console
@@ -22,22 +25,6 @@
 
     # Uncomment for testing (avoids rate limits):
     # acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
-}
-
-# =============================================================================
-# Reusable snippet for reverse proxy headers (WebSocket compatible)
-# Import in Docker labels with: caddy.reverse_proxy.import=proxy_headers
-# =============================================================================
-(proxy_headers) {
-    header_up Host {host}
-    header_up X-Real-IP {remote_host}
-    header_up X-Forwarded-Proto {header.X-Forwarded-Proto}
-    header_up Connection {header.Connection}
-    header_up Upgrade {header.Upgrade}
-    transport http {
-        dial_timeout 60s
-        response_header_timeout 300s
-    }
 }
 
 # =============================================================================
@@ -56,14 +43,10 @@
         host *.nip.io
         host *.sslip.io
     }
-    reverse_proxy @casaos casaos:8080 {
-        import proxy_headers
-    }
+    reverse_proxy @casaos casaos:8080
 
     # Default: route to perf service
-    reverse_proxy perf:3000 {
-        import proxy_headers
-    }
+    reverse_proxy perf:3000
 
     # Large file upload support (20GB like Compass)
     request_body {
@@ -93,14 +76,10 @@
         host *.nip.io
         host *.sslip.io
     }
-    reverse_proxy @casaos casaos:8080 {
-        import proxy_headers
-    }
+    reverse_proxy @casaos casaos:8080
 
     # Default: route to perf service
-    reverse_proxy perf:3000 {
-        import proxy_headers
-    }
+    reverse_proxy perf:3000
 
     # Large file upload support (20GB like Compass)
     request_body {

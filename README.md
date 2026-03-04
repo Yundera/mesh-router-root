@@ -77,6 +77,59 @@ For detailed guidance on choosing and configuring gateway modes:
 
 ---
 
+## Debugging & API Reference
+
+### Debugging Headers
+
+Use these headers to debug routing issues:
+
+#### X-Mesh-Trace
+
+Add `X-Mesh-Trace: 1` request header to see the routing path in the response:
+
+```bash
+curl -s -D- -o /dev/null -H "X-Mesh-Trace: 1" https://app.alice.domain.com/ | grep -i x-mesh-route
+# Response: x-mesh-route: cf-worker,nip.io,direct,pcs
+```
+
+Route path segments:
+- `cf-worker` - Cloudflare Worker processed the request
+- `nip.io` - Direct path via nip.io (~4x faster than gateway)
+- `gateway-fallback` - OpenResty gateway fallback
+- `direct` / `agent` - Route from mesh-router-agent
+- `tunnel` - Route from mesh-router-tunnel (WireGuard)
+- `pcs` - Final destination
+
+#### X-Mesh-Force
+
+Force a specific routing path for testing:
+
+```bash
+curl -H "X-Mesh-Force: gateway" https://app.alice.domain.com/  # Use gateway fallback
+curl -H "X-Mesh-Force: direct" https://app.alice.domain.com/   # Prefer agent routes
+curl -H "X-Mesh-Force: tunnel" https://app.alice.domain.com/   # Prefer tunnel routes
+```
+
+### Backend API
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/routes/:userid/:sig` | Ed25519 | Register routes |
+| `GET` | `/routes/:userid` | Public | Get routes for user |
+| `DELETE` | `/routes/:userid/:sig` | Ed25519 | Delete all routes |
+| `GET` | `/resolve/v2/:domain` | Public | Resolve domain to routes |
+| `GET` | `/available/:domainName` | Public | Check domain availability |
+
+Example - resolve a domain:
+```bash
+curl https://backend.domain.com/resolve/v2/alice
+# Response: {"userId":"...","routes":[...],"routesTtl":580}
+```
+
+See [mesh-router-backend/README.md](./mesh-router-backend/README.md) for full API documentation.
+
+---
+
 ## Architecture
 
 Architecture diagrams and design documents are available in the [doc/architecture](./doc/architecture) folder:
