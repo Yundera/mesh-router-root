@@ -22,3 +22,6 @@
 [submodule "mesh-router-perf"]
 	path = mesh-router-perf
 	url = https://github.com/Yundera/mesh-router-perf.git
+[submodule "mesh-router-caddy"]
+	path = mesh-router-caddy
+	url = https://github.com/Yundera/mesh-router-caddy.git
