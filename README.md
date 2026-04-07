@@ -1,6 +1,6 @@
-# Mesh Router
+# Mesh Router and NSL.SH
 
-**A distributed mesh networking solution for self-hosted infrastructure**
+**A distributed mesh networking solution for self-hosted infrastructure named NSL.SH**
 
 This repository serves as the root "bookmark" for all Mesh Router projects, bringing together the various components that make up the mesh networking ecosystem.
 
