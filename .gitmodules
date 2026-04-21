@@ -25,3 +25,6 @@
 [submodule "mesh-router-caddy"]
 	path = mesh-router-caddy
 	url = https://github.com/Yundera/mesh-router-caddy.git
+[submodule "mesh-router-auth"]
+	path = mesh-router-auth
+	url = https://github.com/Yundera/mesh-auth.git
