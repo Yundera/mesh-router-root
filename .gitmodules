@@ -28,3 +28,6 @@
 [submodule "mesh-router-auth"]
 	path = mesh-router-auth
 	url = https://github.com/Yundera/mesh-auth.git
+[submodule "mail-gateway"]
+	path = mail-gateway
+	url = https://github.com/Yundera/mail-gateway
