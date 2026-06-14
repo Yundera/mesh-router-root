@@ -31,3 +31,6 @@
 [submodule "mail-gateway"]
 	path = mail-gateway
 	url = https://github.com/Yundera/mail-gateway
+[submodule "mesh-router-nameserver"]
+	path = mesh-router-nameserver
+	url = https://github.com/Yundera/mesh-router-nameserver.git
