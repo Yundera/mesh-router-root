@@ -34,3 +34,6 @@
 [submodule "mesh-router-nameserver"]
 	path = mesh-router-nameserver
 	url = https://github.com/Yundera/mesh-router-nameserver.git
+[submodule "mesh-console"]
+	path = mesh-console
+	url = https://github.com/Yundera/mesh-console.git
