@@ -37,3 +37,6 @@
 [submodule "mesh-console"]
 	path = mesh-console
 	url = https://github.com/Yundera/mesh-console.git
+[submodule "auth-console"]
+	path = auth-console
+	url = https://github.com/Yundera/auth-console.git
