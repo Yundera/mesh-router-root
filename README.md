@@ -55,7 +55,57 @@ Mesh Router enables secure, distributed routing of traffic between public server
 | [**mesh-router-tunnel**](./mesh-router-tunnel) | WireGuard-based VPN tunneling for NAT traversal | [README](./mesh-router-tunnel/README.md) |
 | [**mesh-router-agent**](./mesh-router-agent) | Lightweight agent for direct IP registration | [README](./mesh-router-agent/README.md) |
 | [**mesh-dashboard**](./mesh-dashboard) | Web dashboard for mesh network management | [README](./mesh-dashboard/README.md) |
-| [**mesh-router-template-root**](./mesh-router-template-root) | Template for PCS instance configuration | - |
+| [**mesh-router-nameserver**](./mesh-router-nameserver) | Authoritative DNS for the `nsl.sh` zone | [README](./mesh-router-nameserver/README.md) |
+| [**mesh-router-perf**](./mesh-router-perf) | Performance testing service | [README](./mesh-router-perf/README.md) |
+
+**On the box** — everything below is deployed by the template (see [What runs on a box](#what-runs-on-a-box)):
+
+| Component | Description | Documentation |
+|-----------|-------------|---------------|
+| [**mesh-router-template-root**](./mesh-router-template-root) | The box template: `install.sh`, the nightly self-check, and the `mesh` / `auth` / `maison` stacks it deploys | [README](./mesh-router-template-root/README.md) |
+| [**mesh-router-caddy**](./mesh-router-caddy) | Local reverse proxy (caddy-docker-proxy) routing each hostname to a container by its `caddy_*` labels | [README](./mesh-router-caddy/README.md) |
+| [**mesh-console**](./mesh-console) | The box's local status and control page | [README](./mesh-console/README.md) |
+| [**mesh-router-auth**](./mesh-router-auth) | auth-registrar: registers OIDC clients with the box's Authelia for gated apps | [README](./mesh-router-auth/README.md) |
+| [**auth-console**](./auth-console) | Web UI of the `auth` stack (Dex + Authelia): who can sign in | [README](./auth-console/README.md) |
+| [**mail-gateway**](./mail-gateway) | SMTP gateway: apps send mail, it relays over HTTPS | [README](./mail-gateway/README.md) |
+| [**maison**](./maison) | The dashboard and app manager (replaces CasaOS): installs store apps, backups, domains | [README](./maison/README.md), [docs](./maison/docs) |
+| [**files**](./files) | Web file manager for the box (replaces FileBrowser) | [README](./files/README.md) |
+
+---
+
+## What runs on a box
+
+There are two templates, and a managed Yundera PCS runs **both**: the Yundera layer
+installs and drives the FOSS mesh template unmodified. A self-serve box (`install.sh`)
+runs the mesh template alone.
+
+```
+Yundera/template-root            /DATA/AppData/yundera     managed PCS only
+  admin app, kopia backup, Yundera login connector, identity push, its own migrations
+  └── ensure-mesh-installed.sh   writes the mesh .env contract, picks the mesh version,
+      │                          runs the mesh self-check every night
+      ▼
+mesh-router-template-root        /DATA/AppData/mesh        every box
+  stack mesh    → /DATA/AppData/mesh     tunnel, agent, caddy, smtp, mesh-console
+  stack auth    → /DATA/AppData/auth     dex, authelia, auth-registrar, auth-console
+  stack maison  → /DATA/AppData/maison   maison (AppShield gate) + maison-app (the dashboard)
+                                           └── store apps → /DATA/AppData/<app>
+```
+
+All stacks share the external `pcs` network; requests arrive through the tunnel or
+agent, and caddy routes each hostname by container labels.
+
+**Where each version is chosen**
+
+| What | Pinned in | Reaches a box |
+|---|---|---|
+| The maison image | `mesh-router-template-root/stacks/maison/docker-compose.yml` (`ghcr.io/yundera/maison:<x.y.z>`) | next self-check after the template change lands on the box's channel |
+| The mesh template | the update channel: `MESH_UPDATE_CHANNEL` (`stable` / `main`); on a managed PCS, `template-root` picks the branch (or `MESH_REF`) | nightly self-check |
+| Store apps | the app stores; each app updates from Maison's per-app Update | when the user (or Settings › Updates) applies it |
+
+So shipping a Maison release is: tag `maison` (the image is built on the tag push —
+push tags one at a time, GitHub skips tag events when more than three are pushed at
+once), then bump the image in `mesh-router-template-root` on `main`, then `stable`.
 
 ---
 
