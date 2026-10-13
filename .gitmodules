@@ -40,3 +40,9 @@
 [submodule "auth-console"]
 	path = auth-console
 	url = https://github.com/Yundera/auth-console.git
+[submodule "maison"]
+	path = maison
+	url = https://github.com/Yundera/Maison.git
+[submodule "files"]
+	path = files
+	url = https://github.com/Yundera/files.git
