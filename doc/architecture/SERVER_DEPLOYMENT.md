@@ -72,7 +72,7 @@ The `mesh-internal` network enables direct communication between mesh-router ser
 |-------------------|---------|
 | Gateway → Backend | Domain resolution API (`/resolve/v2/:domain`) |
 | Tunnel → Backend | Route registration API (`/routes/:userid/:sig`) |
-| Gateway → Tunnel | VPN traffic forwarding (via PROVIDER_ROUTE_IP) |
+| Gateway → Tunnel | VPN traffic forwarding (the tunnel route's `ip`, from PROVIDER_ROUTE_IP) |
 
 ### IP Assignments
 
@@ -81,17 +81,17 @@ Services use static IPs on the mesh-internal network:
 | Service | IP Address | Purpose |
 |---------|------------|---------|
 | Backend | dynamic | Accessed by hostname `mesh-router-backend-{env}` |
-| Gateway | 172.30.0.4 | Fixed IP for Tunnel's PROVIDER_ROUTE_IP |
-| Tunnel | 172.30.0.5 | Fixed IP for Gateway's routing target |
+| Gateway | 172.30.0.4 | Fixed IP (convention; nothing points at it) |
+| Tunnel | 172.30.0.5 | Fixed IP = its own PROVIDER_ROUTE_IP, the gateway's routing target |
 
 ### Why Static IPs?
 
-The tunnel needs to know where to forward incoming VPN traffic. By assigning a static IP to the gateway (172.30.0.4), the tunnel's `PROVIDER_ROUTE_IP` environment variable reliably routes traffic:
+Tunnel routes point at the **tunnel server itself**: it registers `PROVIDER_ROUTE_IP:PROVIDER_ROUTE_PORT` as the route `ip`/`port` of every tunnelled box, and the gateway proxies HTTP there; the tunnel server then forwards by `Host` over WireGuard. So `PROVIDER_ROUTE_IP` must be the tunnel's own static address, reachable only from containers on that host's `mesh-internal` (a gateway on another host cannot reach NAT boxes). Live values: prod tunnel 172.30.0.5, staging (nasselle) tunnel 172.30.0.3 / gateway 172.30.0.2.
 
 ```yaml
 # In tunnel docker-compose.yml
 environment:
-  - PROVIDER_ROUTE_IP=172.30.0.4
+  - PROVIDER_ROUTE_IP=172.30.0.5   # the tunnel's own mesh-internal address
   - PROVIDER_ROUTE_PORT=80
 ```
 
@@ -120,7 +120,7 @@ services:
     networks:
       webtraefik:       # Traefik access for public traffic
       mesh-internal:
-        ipv4_address: 172.30.0.4  # Static IP for tunnel routing
+        ipv4_address: 172.30.0.4  # Static IP (convention)
     environment:
       - SERVER_DOMAIN={your-domain}
       - BACKEND_URL=http://mesh-router-backend-{env}:8192
@@ -138,7 +138,7 @@ services:
       mesh-internal:
         ipv4_address: 172.30.0.5  # Static IP
     environment:
-      - PROVIDER_ROUTE_IP=172.30.0.4   # Gateway's static IP
+      - PROVIDER_ROUTE_IP=172.30.0.5   # This container's own static IP
       - PROVIDER_ROUTE_PORT=80
       - AUTH_API_URL=https://{your-domain}/router/api/verify
 ```
@@ -177,11 +177,11 @@ docker exec mesh-router-gateway-{env} ping -c 1 mesh-router-backend-{env}
 2. Verify backend is healthy: `docker logs mesh-router-backend-{env}`
 3. Check mesh-internal network exists: `docker network inspect mesh-internal`
 
-### Tunnel Traffic Not Reaching Gateway
+### Gateway Cannot Reach Tunnelled Boxes
 
-1. Verify static IPs: `docker inspect mesh-router-gateway-{env} | grep 172.30`
-2. Check PROVIDER_ROUTE_IP matches gateway's IP
-3. Test connectivity: `docker exec mesh-router-tunnel-{env} curl http://172.30.0.4/_health`
+1. Verify static IPs: `docker inspect mesh-router-tunnel-{env} | grep 172.30`
+2. Check PROVIDER_ROUTE_IP matches the tunnel's own IP (and the `ip` of `source: tunnel` routes in `/resolve/v2/<user>`)
+3. Test connectivity from the gateway: `docker exec mesh-router-gateway-{env} curl -s -o /dev/null -w '%{http_code}' -H 'Host: <app>-<user>.{your-domain}' http://172.30.0.5/`
 
 ## Complete Example
 
