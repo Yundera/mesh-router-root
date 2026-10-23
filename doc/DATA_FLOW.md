@@ -2,6 +2,13 @@
 
 This document provides detailed diagrams showing how data flows through each gateway mode in Mesh Router.
 
+> **Route model changed (2026-10-23).** The diagrams below show the older six-route
+> model (raw `ip`, sslip.io and nip.io agent routes). Today the agent registers one
+> domain route per scheme: `<ip-dashed>.<IP_ZONE>` (agent 1.1.3+, our nameserver), or
+> `<ip-dashed>.nip.io` on a box without `IP_ZONE`. The CF Worker fetches
+> `<app>-<ip>.<IP_ZONE>` and falls back to `<app>-<ip>.sslip.io`; the gateway connects by
+> the route's `ip` with `domain` as SNI. Current table: [architecture/README.md](architecture/README.md#route-types).
+
 ---
 
 ## Request Flow Overview

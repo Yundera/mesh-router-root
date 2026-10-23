@@ -24,12 +24,12 @@ This document describes the overall architecture of the Mesh Router system.
                          ▼                                                       ▼
               ┌──────────────────────┐                             ┌──────────────────────┐
               │  Domain Routes       │                             │  Gateway Fallback    │
-              │  (sslip.io, nip.io)  │                             │  (OpenResty)         │
-              │  priority 2-3        │                             │                      │
+              │  (ip.<zone>, sslip)  │                             │  (OpenResty)         │
+              │  priority 1          │                             │                      │
               └──────────┬───────────┘                             └──────────┬───────────┘
                          │                                                    │
                          │                                         ┌──────────┴──────────┐
-                         │                                         │  IP Routes + Tunnel │
+                         │                                         │ Agent + Tunnel      │
                          │                                         │  (priority 1, 10)   │
                          │                                         └──────────┬──────────┘
                          │                                                    │
@@ -48,23 +48,25 @@ Routes are categorized by type and selected by priority (lower number = higher p
 
 | Type | Priority | Source | Example | Used By |
 |------|----------|--------|---------|---------|
-| `ip` | 1 | agent | `88.187.147.189:443` | Gateway (OpenResty) |
-| `domain` | 2 | agent | `88-187-147-189.sslip.io` | CF Worker |
-| `domain` | 3 | agent | `88-187-147-189.nip.io` | CF Worker |
-| `ip` | 10 | tunnel | `172.30.0.3:80` | Gateway (via WireGuard) |
+| `domain` | 1 | agent | `88-187-147-189.ip.nsl.sh` (ip `88.187.147.189`), https + http | CF Worker, Gateway (OpenResty) |
+| `ip` | 2 | tunnel | `172.30.0.3:80` (the tunnel server) | Gateway (via WireGuard) |
 
-### Why Two Route Types?
+The agent's domain is `<ip-dashed>.<IP_ZONE>` when the box has `IP_ZONE` (agent 1.1.3+,
+our nameserver), otherwise `<ip-dashed>.nip.io`.
 
-- **CF Workers cannot fetch IP addresses directly** (Cloudflare error 1003)
-- **Domain routes** (`sslip.io`, `nip.io`) are DNS services that resolve to embedded IPs
-- **IP routes** are used by the OpenResty gateway which can connect to IPs directly
+### Why IP-encoded names?
+
+- **CF Workers cannot fetch IP addresses directly** (Cloudflare error 1003): the Worker
+  fetches `<app>-<ip>.<IP_ZONE>`, built from the route's `ip`, and falls back to
+  `<app>-<ip>.sslip.io` (the box's Let's Encrypt names)
+- **The OpenResty gateway** connects to the route's `ip` and uses `domain` as SNI
 
 ### Route Selection by Component
 
 | Component | Route Types Used | Selection Logic |
 |-----------|------------------|-----------------|
-| **CF Worker** | `domain` only | Pick lowest priority healthy domain route |
-| **OpenResty Gateway** | `ip` only | Pick lowest priority healthy IP route |
+| **CF Worker** | agent `domain` routes | Direct to the box by its IP name; gateway fallback otherwise |
+| **OpenResty Gateway** | all | Pick lowest priority healthy route (agent, then tunnel) |
 
 ## Route Registration & Validation
 
@@ -75,9 +77,8 @@ Agent                           Backend                         Redis
   │                                │                               │
   ├─ POST /routes                  │                               │
   │  { routes: [                   │                               │
-  │    {type: "ip", ip: "..."},    │                               │
-  │    {type: "domain", domain: "...sslip.io"},                    │
-  │    {type: "domain", domain: "...nip.io"}                       │
+  │    {type: "domain", domain: "<ip>.ip.nsl.sh", scheme: https},  │
+  │    {type: "domain", domain: "<ip>.ip.nsl.sh", scheme: http}    │
   │  ]}                            │                               │
   │ ───────────────────────────────>                               │
   │                                │                               │
@@ -125,9 +126,9 @@ mesh-router-backend ───► Firestore (domain data)
 mesh-router-agent ─── POST /routes/:userid/:sig ───► mesh-router-backend
        │                                                     │
        │ Routes submitted:                                   │ Validation:
-       │ ├─ {type: ip, ip: 88.x.x.x, priority: 1}           │ ├─ Test connectivity
-       │ ├─ {type: domain, domain: *.sslip.io, priority: 2} │ ├─ Verify SSL
-       │ └─ {type: domain, domain: *.nip.io, priority: 3}   │ └─ Store only healthy
+       │ ├─ {type: domain, <ip>.ip.nsl.sh, https, prio 1}   │ ├─ Test connectivity
+       │ └─ {type: domain, <ip>.ip.nsl.sh, http, prio 1}    │ ├─ Verify SSL
+       │                                                     │ └─ Store only healthy
        │                                                     ▼
        │                                                  Redis
        │                                               (healthy routes)
