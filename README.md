@@ -139,12 +139,14 @@ Add `X-Mesh-Trace: 1` request header to see the routing path in the response:
 
 ```bash
 curl -s -D- -o /dev/null -H "X-Mesh-Trace: 1" https://app.alice.domain.com/ | grep -i x-mesh-route
-# Response: x-mesh-route: cf-worker,nip.io,direct,pcs
+# Response: x-mesh-route: cf-worker,ip-dns,direct,pcs
 ```
 
 Route path segments:
 - `cf-worker` - Cloudflare Worker processed the request
-- `nip.io` - Direct path via nip.io (~4x faster than gateway)
+- `ip-dns` - Direct path to the box over its `ip.<zone>` name (~4x faster than gateway)
+- `ip-dns-fail`, `sslip.io` - That direct path failed; retried over the box's sslip.io name
+- `nip.io` - Direct path via nip.io, on a box without `IP_ZONE`
 - `gateway-fallback` - OpenResty gateway fallback
 - `direct` / `agent` - Route from mesh-router-agent
 - `tunnel` - Route from mesh-router-tunnel (WireGuard)

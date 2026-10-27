@@ -2,6 +2,10 @@
 
 This document explains how data is protected as it flows through Mesh Router, including certificate management, encryption details, and the trust model.
 
+> **nip.io replaced (2026-10-23).** Where this page says nip.io, a box with `IP_ZONE` uses
+> `<ip-dashed>.<IP_ZONE>` (our nameserver, `*.<IP_ZONE>` in the box certificate) instead; nip.io
+> remains only on a box without `IP_ZONE`. See the note atop [DATA_FLOW.md](DATA_FLOW.md).
+
 ---
 
 ## Overview

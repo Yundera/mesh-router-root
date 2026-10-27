@@ -2,6 +2,10 @@
 
 This document explains the three gateway configurations available in Mesh Router and helps you choose the right one for your deployment.
 
+> **nip.io replaced (2026-10-23).** Where this page says nip.io, a box with `IP_ZONE` uses
+> `<ip-dashed>.<IP_ZONE>` (our nameserver, `*.<IP_ZONE>` in the box certificate) instead; nip.io
+> remains only on a box without `IP_ZONE`. See the note atop [DATA_FLOW.md](DATA_FLOW.md).
+
 ---
 
 ## Overview
