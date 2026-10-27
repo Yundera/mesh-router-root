@@ -36,11 +36,10 @@
 #   - Host-based routing to containers (CasaOS, apps)
 # =============================================================================
 :80 {
-    # Route to CasaOS for the main PCS domain and its nip.io/sslip.io variants
+    # Route to CasaOS for the main PCS domain and its sslip.io variants
     # The wildcard matchers handle domain routes from CF Worker
     @casaos {
         host {$PCS_DOMAIN:painfulurial.inojob.com}
-        host *.nip.io
         host *.sslip.io
     }
     reverse_proxy @casaos casaos:8080
@@ -70,10 +69,9 @@
         format console
     }
 
-    # Route to CasaOS for the main PCS domain and its nip.io/sslip.io variants
+    # Route to CasaOS for the main PCS domain and its sslip.io variants
     @casaos {
         host {$PCS_DOMAIN:painfulurial.inojob.com}
-        host *.nip.io
         host *.sslip.io
     }
     reverse_proxy @casaos casaos:8080
